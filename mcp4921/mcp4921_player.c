@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+  #include <time.h>
 
 #include <bcm2835.h>
 
@@ -54,6 +55,24 @@ union trans {
   	unsigned short s;
   	unsigned char c[2];
 };
+
+void setTimer(int seconds, int mseconds)
+{
+  struct timespec temp;
+  int cali = 4000;
+
+  clock_gettime(CLOCK_REALTIME,&temp);
+  temp.tv_sec += seconds;
+  temp.tv_nsec += mseconds * 1000 - cali;
+
+  while(1){
+    struct timespec t;
+    clock_gettime(CLOCK_REALTIME, &t);
+    if(t.tv_sec > temp.tv_sec || t.tv_sec == temp.tv_sec && t.tv_nsec > temp.tv_nsec)break;
+  }
+
+  return ;
+}
 
 int udelay(int us) {
   	int i,j;
@@ -140,7 +159,8 @@ int play_wav(int fd)
                 // chip only has one channel;
   			}
 
-  			udelay(gap);
+  			//udelay(gap);
+        setTimer(0, gap);
 
   		}
 
@@ -175,14 +195,19 @@ int spi_close(void) {
 	bcm2835_close();
 }
 
-int main()
+int main(int argc, char **argv)
 {
 	int fd;
+
+    if (argc != 2) {
+      printf("Give me a wav file \n");
+      return 0;
+    }
 
 	if (spi_init())
 		return 0;
 
-	fd = open("/home/pi/8.wav", O_RDONLY);
+	fd = open(argv[1], O_RDONLY);
 	play_wav(fd);
 	close(fd);
 
